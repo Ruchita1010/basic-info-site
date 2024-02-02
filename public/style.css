@@ -1,0 +1,39 @@
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #0d0d0d;
+  color: #efefef;
+}
+
+h1 {
+  text-align: center;
+}
+
+.navbar {
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 2.2rem;
+  flex-wrap: wrap;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.navbar li {
+  list-style: none;
+}
+
+.navbar a {
+  text-decoration: none;
+  color: rgb(4, 134, 170);
+}
+
+.gif {
+  width: 100vw;
+  display: grid;
+  justify-items: center;
+}
