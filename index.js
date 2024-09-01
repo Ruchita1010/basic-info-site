@@ -1,58 +1,82 @@
-const http = require('http');
-const fs = require('fs/promises');
-const path = require('path');
-
-const getContentType = (fileExt) => {
-  switch (fileExt) {
-    case '.js':
-      return 'text/javascript';
-    case '.css':
-      return 'text/css';
-    case '.json':
-      return 'application/json';
-    case '.png':
-      return 'image/png';
-    case '.jpg':
-      return 'image/jpg';
-    default:
-      return 'text/html';
-  }
-};
-
-const server = http.createServer(async (req, res) => {
-  let filePath = path.join(
-    __dirname,
-    'public',
-    req.url === '/' ? 'index.html' : req.url
-  );
-
-  const fileExt = path.extname(filePath);
-  // if the url doesn't end with file extension, add it
-  if (!fileExt) {
-    filePath += '.html';
-  }
-
-  try {
-    let contentType = getContentType(fileExt);
-    const data = await fs.readFile(filePath);
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(data);
-  } catch (err) {
-    if (err.code === 'ENOENT') {
-      const notFoundFilePath = path.join(__dirname, 'public', '404.html');
-      try {
-        const data = await fs.readFile(notFoundFilePath);
-        res.writeHead(404, { 'Content-Type': 'text/html' });
-        res.end(data);
-      } catch (err) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Internal server error!!!');
-      }
-    }
-  }
-});
+import { constants } from 'buffer';
+import { accessSync, readFile } from 'fs';
+import { createServer } from 'http';
+import { extname, join, normalize, resolve } from 'path';
 
 const PORT = process.env.PORT || 8080;
+const dirName = './public';
+
+const types = {
+  html: 'text/html',
+  css: 'text/css',
+  js: 'application/javascript',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  json: 'application/json',
+  xml: 'application/xml',
+};
+
+const root = normalize(resolve(dirName));
+
+const server = createServer((req, res) => {
+  const fileExt = extname(req.url).slice(1);
+  const type = types[fileExt];
+  if (!type) {
+    serve404();
+    return;
+  }
+
+  // if the url doesn't end with file extension
+  let fileName = req.url;
+  if (req.url === '/') {
+    fileName = 'index.html';
+  } else if (!fileExt) {
+    try {
+      accessSync(join(root, req.url + '.html'), constants.F_OK);
+      fileName += '.html';
+    } catch (e) {
+      fileName = join(fileName, 'index.html');
+    }
+  }
+
+  const filePath = join(root, fileName);
+  // preventing directory traversal attacks by sanitizing the requested path using Path Normalization and Root Directory Verification.
+  // so resolving, normalizing and checking if the absolute path is within the root directory
+  const isPathUnderRoot = normalize(resolve(filePath)).startsWith(root);
+  if (!isPathUnderRoot) {
+    serve404();
+    return;
+  }
+
+  readFile(filePath, (err, data) => {
+    if (err) {
+      if (err.code === 'ENOENT') {
+        serve404();
+        return;
+      }
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('500: Internal Server Error');
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': type });
+    res.end(data);
+  });
+
+  function serve404() {
+    const filePath = join(root, '404.html');
+    readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404: Page Not Found :(');
+        return;
+      }
+      res.writeHead(404, { 'Content-Type': 'text/html' });
+      res.end(data);
+    });
+  }
+});
 
 server.listen(PORT, (err) => {
   if (err) throw err;
