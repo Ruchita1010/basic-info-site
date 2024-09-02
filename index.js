@@ -22,11 +22,7 @@ const root = normalize(resolve(dirName));
 
 const server = createServer((req, res) => {
   const fileExt = extname(req.url).slice(1);
-  const type = types[fileExt];
-  if (!type) {
-    serve404();
-    return;
-  }
+  const type = types[fileExt] || types.html;
 
   // if the url doesn't end with file extension
   let fileName = req.url;
